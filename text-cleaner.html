@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Cleaner</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #1a1d27;
+    --border: #2a2e3a;
+    --text: #e6e8ee;
+    --muted: #9aa0ad;
+    --accent: #4f8cff;
+    --accent-hover: #3a76e8;
+    --green: #2ecc71;
+    --input-bg: #0c0e14;
+    --btn-secondary-bg: #2a2e3a;
+    --btn-secondary-hover: #353a49;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --border: #d9dce3;
+    --text: #1c1f26;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --green: #15a34a;
+    --input-bg: #f9fafb;
+    --btn-secondary-bg: #e5e7eb;
+    --btn-secondary-hover: #d1d5db;
+  }
+  * { box-sizing: border-box; }
+  body, .panel, textarea, button { transition: background 0.2s, color 0.2s, border-color 0.2s; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .container {
+    width: 100%;
+    max-width: 900px;
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  p.subtitle {
+    color: var(--muted);
+    margin: 0 0 24px;
+    font-size: 14px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    resize: vertical;
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    font-family: inherit;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .editor {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+  }
+  .editor textarea {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .gutter {
+    display: none;
+    flex: 0 0 auto;
+    min-width: 40px;
+    padding: 12px 8px 12px 0;
+    margin: 0;
+    text-align: right;
+    color: var(--muted);
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    font-family: inherit;
+    white-space: pre;
+    overflow: hidden;
+    user-select: none;
+    pointer-events: none;
+  }
+  .editor.show-gutter .gutter { display: block; }
+  .editor.show-gutter textarea {
+    border-radius: 0 8px 8px 0;
+    border-left: none;
+  }
+  .gutter-mirror {
+    position: absolute;
+    top: 0;
+    left: -9999px;
+    visibility: hidden;
+    height: auto;
+    box-sizing: border-box;
+    border: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+  .buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--btn-secondary-bg); color: var(--text); }
+  .btn-secondary:hover { background: var(--btn-secondary-hover); }
+  .theme-toggle {
+    position: absolute;
+    top: 32px;
+    right: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .theme-toggle:hover { background: var(--btn-secondary-hover); }
+  .status {
+    font-size: 13px;
+    color: var(--green);
+    min-height: 18px;
+    margin-left: 4px;
+    align-self: center;
+  }
+  .meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">🌙 Dark</button>
+  <h1>Text Cleaner</h1>
+  <p class="subtitle">Paste text below to strip leading spaces and collapse unexpected line breaks into clean, copy-ready prose.</p>
+
+  <div class="panel">
+    <label for="input">Input</label>
+    <div class="editor" id="inputEditor">
+      <div class="gutter" id="inputGutter" aria-hidden="true"></div>
+      <textarea id="input" placeholder="Paste your text here..."></textarea>
+    </div>
+    <div class="meta" id="inputMeta"></div>
+  </div>
+
+  <div class="controls">
+    <label class="toggle">
+      <input type="checkbox" id="joinParagraphs" checked>
+      Join wrapped lines into single paragraphs
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="keepBlankLines" checked>
+      Keep blank lines between paragraphs
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="collapseSpaces" checked>
+      Collapse multiple spaces
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="showLineNumbers">
+      Show line numbers
+    </label>
+  </div>
+
+  <div class="buttons">
+    <button class="btn-primary" id="cleanBtn">Clean Text</button>
+    <button class="btn-secondary" id="copyBtn">Copy Output</button>
+    <button class="btn-secondary" id="pasteBtn">Paste from Clipboard</button>
+    <button class="btn-secondary" id="clearBtn">Clear</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="panel">
+    <label for="output">Output</label>
+    <div class="editor" id="outputEditor">
+      <div class="gutter" id="outputGutter" aria-hidden="true"></div>
+      <textarea id="output" placeholder="Cleaned text will appear here..." readonly></textarea>
+    </div>
+    <div class="meta" id="outputMeta"></div>
+  </div>
+</div>
+
+<script>
+  const input = document.getElementById('input');
+  const output = document.getElementById('output');
+  const status = document.getElementById('status');
+  const inputMeta = document.getElementById('inputMeta');
+  const outputMeta = document.getElementById('outputMeta');
+
+  function setStatus(msg) {
+    status.textContent = msg;
+    if (msg) {
+      clearTimeout(setStatus._t);
+      setStatus._t = setTimeout(() => (status.textContent = ''), 2500);
+    }
+  }
+
+  function cleanText(text) {
+    const joinParagraphs = document.getElementById('joinParagraphs').checked;
+    const keepBlankLines = document.getElementById('keepBlankLines').checked;
+    const collapseSpaces = document.getElementById('collapseSpaces').checked;
+
+    // Normalize line endings
+    let t = text.replace(/\r\n?/g, '\n');
+
+    // Remove leading/trailing spaces (and tabs) from every line
+    let lines = t.split('\n').map(line => line.replace(/^[ \t]+/, '').replace(/[ \t]+$/, ''));
+
+    if (joinParagraphs) {
+      // Group lines into paragraphs separated by blank lines,
+      // then join wrapped lines within a paragraph using a single space.
+      const paragraphs = [];
+      let current = [];
+      for (const line of lines) {
+        if (line === '') {
+          if (current.length) {
+            paragraphs.push(current.join(' '));
+            current = [];
+          }
+        } else {
+          current.push(line);
+        }
+      }
+      if (current.length) paragraphs.push(current.join(' '));
+
+      const sep = keepBlankLines ? '\n\n' : '\n';
+      t = paragraphs.join(sep);
+    } else {
+      if (!keepBlankLines) {
+        lines = lines.filter(line => line !== '');
+      } else {
+        // Collapse runs of 2+ blank lines into a single blank line
+        const collapsed = [];
+        let prevBlank = false;
+        for (const line of lines) {
+          const isBlank = line === '';
+          if (isBlank && prevBlank) continue;
+          collapsed.push(line);
+          prevBlank = isBlank;
+        }
+        lines = collapsed;
+      }
+      t = lines.join('\n');
+    }
+
+    if (collapseSpaces) {
+      t = t.replace(/ {2,}/g, ' ');
+    }
+
+    // Trim leading/trailing whitespace of the whole result
+    return t.trim();
+  }
+
+  function updateInputMeta() {
+    const chars = input.value.length;
+    const lines = input.value ? input.value.split('\n').length : 0;
+    inputMeta.textContent = `${chars} chars • ${lines} line(s)`;
+  }
+
+  function updateOutputMeta() {
+    const chars = output.value.length;
+    const words = output.value.trim() ? output.value.trim().split(/\s+/).length : 0;
+    outputMeta.textContent = `${chars} chars • ${words} word(s)`;
+  }
+
+  function runClean() {
+    output.value = cleanText(input.value);
+    updateOutputMeta();
+    updateAllGutters();
+    setStatus('Cleaned ✓');
+  }
+
+  document.getElementById('cleanBtn').addEventListener('click', runClean);
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    if (!output.value) { setStatus('Nothing to copy'); return; }
+    try {
+      await navigator.clipboard.writeText(output.value);
+      setStatus('Copied to clipboard ✓');
+    } catch (e) {
+      output.select();
+      document.execCommand('copy');
+      setStatus('Copied ✓');
+    }
+  });
+
+  document.getElementById('pasteBtn').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      input.value = text;
+      updateInputMeta();
+      runClean();
+      setStatus('Pasted & cleaned ✓');
+    } catch (e) {
+      setStatus('Clipboard read blocked — paste manually (Cmd+V)');
+    }
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    input.value = '';
+    output.value = '';
+    updateInputMeta();
+    updateOutputMeta();
+    updateAllGutters();
+    setStatus('Cleared');
+    input.focus();
+  });
+
+  // Auto-clean as you type / paste
+  input.addEventListener('input', () => {
+    updateInputMeta();
+    runClean();
+  });
+
+  // Re-run when toggles change
+  ['joinParagraphs', 'keepBlankLines', 'collapseSpaces'].forEach(id => {
+    document.getElementById(id).addEventListener('change', runClean);
+  });
+
+  // Line numbers (display-only gutter, never part of copyable text)
+  const showLineNumbers = document.getElementById('showLineNumbers');
+  const inputEditor = document.getElementById('inputEditor');
+  const outputEditor = document.getElementById('outputEditor');
+  const inputGutter = document.getElementById('inputGutter');
+  const outputGutter = document.getElementById('outputGutter');
+
+  const gutterMirror = document.createElement('div');
+  gutterMirror.className = 'gutter-mirror';
+  document.body.appendChild(gutterMirror);
+
+  function computeGutter(textarea, gutter) {
+    const cs = getComputedStyle(textarea);
+    const lineHeight = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.5);
+
+    // Match the textarea's text wrapping width so wrapped lines align.
+    gutterMirror.style.width = textarea.clientWidth + 'px';
+    gutterMirror.style.fontFamily = cs.fontFamily;
+    gutterMirror.style.fontSize = cs.fontSize;
+    gutterMirror.style.lineHeight = cs.lineHeight;
+    gutterMirror.style.paddingLeft = cs.paddingLeft;
+    gutterMirror.style.paddingRight = cs.paddingRight;
+
+    const lines = textarea.value.split('\n');
+    const numbers = [];
+    for (let i = 0; i < lines.length; i++) {
+      gutterMirror.textContent = lines[i] === '' ? ' ' : lines[i];
+      const rows = Math.max(1, Math.round(gutterMirror.offsetHeight / lineHeight));
+      numbers.push(String(i + 1));
+      for (let r = 1; r < rows; r++) numbers.push(''); // spacers for wrapped rows
+    }
+    gutter.textContent = numbers.join('\n');
+    gutter.scrollTop = textarea.scrollTop;
+  }
+
+  function updateAllGutters() {
+    if (!showLineNumbers.checked) return;
+    computeGutter(input, inputGutter);
+    computeGutter(output, outputGutter);
+  }
+
+  function applyLineNumbers() {
+    const on = showLineNumbers.checked;
+    inputEditor.classList.toggle('show-gutter', on);
+    outputEditor.classList.toggle('show-gutter', on);
+    if (on) updateAllGutters();
+    localStorage.setItem('textCleanerLineNumbers', on ? '1' : '0');
+  }
+
+  // Keep gutters scroll-synced with their textareas
+  input.addEventListener('scroll', () => { inputGutter.scrollTop = input.scrollTop; });
+  output.addEventListener('scroll', () => { outputGutter.scrollTop = output.scrollTop; });
+  input.addEventListener('input', updateAllGutters);
+  window.addEventListener('resize', updateAllGutters);
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => updateAllGutters());
+    ro.observe(input);
+    ro.observe(output);
+  }
+  showLineNumbers.addEventListener('change', applyLineNumbers);
+
+  showLineNumbers.checked = localStorage.getItem('textCleanerLineNumbers') === '1';
+  applyLineNumbers();
+
+  updateInputMeta();
+  updateOutputMeta();
+
+  // Theme toggle (light / dark) with persistence
+  const themeToggle = document.getElementById('themeToggle');
+  const root = document.documentElement;
+
+  function applyTheme(theme) {
+    if (theme === 'light') {
+      root.setAttribute('data-theme', 'light');
+      themeToggle.textContent = '☀️ Light';
+    } else {
+      root.removeAttribute('data-theme');
+      themeToggle.textContent = '🌙 Dark';
+    }
+  }
+
+  const savedTheme = localStorage.getItem('textCleanerTheme') || 'dark';
+  applyTheme(savedTheme);
+
+  themeToggle.addEventListener('click', () => {
+    const isLight = root.getAttribute('data-theme') === 'light';
+    const next = isLight ? 'dark' : 'light';
+    applyTheme(next);
+    localStorage.setItem('textCleanerTheme', next);
+  });
+</script>
+</body>
+</html>
