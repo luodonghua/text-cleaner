@@ -233,6 +233,10 @@
       Collapse multiple spaces
     </label>
     <label class="toggle">
+      <input type="checkbox" id="stripQuoteMarkers" checked>
+      Strip leading quote markers (│ | >)
+    </label>
+    <label class="toggle">
       <input type="checkbox" id="showLineNumbers">
       Show line numbers
     </label>
@@ -275,12 +279,22 @@
     const joinParagraphs = document.getElementById('joinParagraphs').checked;
     const keepBlankLines = document.getElementById('keepBlankLines').checked;
     const collapseSpaces = document.getElementById('collapseSpaces').checked;
+    const stripQuoteMarkers = document.getElementById('stripQuoteMarkers').checked;
 
     // Normalize line endings
     let t = text.replace(/\r\n?/g, '\n');
 
     // Remove leading/trailing spaces (and tabs) from every line
-    let lines = t.split('\n').map(line => line.replace(/^[ \t]+/, '').replace(/[ \t]+$/, ''));
+    let lines = t.split('\n').map(line => {
+      let l = line;
+      if (stripQuoteMarkers) {
+        // Drop leading whitespace + one or more quote/gutter markers
+        // (│ box-drawing, | pipe, > angle), including nested markers.
+        // A line that is only markers (e.g. "  │") becomes blank.
+        l = l.replace(/^[ \t]*(?:[│|>][ \t]?)+/, '');
+      }
+      return l.replace(/^[ \t]+/, '').replace(/[ \t]+$/, '');
+    });
 
     if (joinParagraphs) {
       // Group lines into paragraphs separated by blank lines,
@@ -389,7 +403,7 @@
   });
 
   // Re-run when toggles change
-  ['joinParagraphs', 'keepBlankLines', 'collapseSpaces'].forEach(id => {
+  ['joinParagraphs', 'keepBlankLines', 'collapseSpaces', 'stripQuoteMarkers'].forEach(id => {
     document.getElementById(id).addEventListener('change', runClean);
   });
 
